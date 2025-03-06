@@ -70,15 +70,22 @@ Example Output:
 
         response_json = json.loads(cleaned_result)
 
-        # Ensure the output has only two keys: brief_description and detailed_description
-        if isinstance(response_json, dict):
+        # Check if the response is already in the desired format
+        if isinstance(response_json, dict) and all(
+            key in response_json for key in ["brief_description", "detailed_description"]
+        ):
+            # If the response is already in the desired format, return it as is
+            return response_json
+        else:
+            # If not, transform the response into the desired format
             brief_descriptions = []
             detailed_descriptions = []
 
-            for key, value in response_json.items():
-                if isinstance(value, dict):
-                    brief_descriptions.append(value.get("brief_description", ""))
-                    detailed_descriptions.append(value.get("detailed_description", ""))
+            if isinstance(response_json, dict):
+                for key, value in response_json.items():
+                    if isinstance(value, dict):
+                        brief_descriptions.append(value.get("brief_description", ""))
+                        detailed_descriptions.append(value.get("detailed_description", ""))
 
             # Combine descriptions into single strings separated by newlines
             final_output = {
@@ -86,8 +93,6 @@ Example Output:
                 "detailed_description": "\n".join(detailed_descriptions)
             }
             return final_output
-        else:
-            raise ValueError("The model's response is not in the expected dictionary format.")
     except json.JSONDecodeError:
         raise ValueError("The model's response could not be parsed as JSON.")
 
