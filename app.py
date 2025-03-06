@@ -25,14 +25,14 @@ def process_pdf(filepath, figure_no=None):
    - Provide a detailed description of the entire figure, explaining what it represents in a paragraph form. Ensure that all label numbers are explicitly mentioned in brackets (e.g., (10), (12), (14)) and describe how the labeled components are connected to each other.
 3. Format the output as a JSON object with the following structure:
    {{
-     "brief_description": "Figure {figure_no}: Brief description of the figure",
-     "detailed_description": "Figure {figure_no}: Detailed description of the figure with labels and their connections."
+     "brief_description": "Figure {figure_no}: Brief description of the figure/n...(More figure breif description according to the figure numbers)",
+     "detailed_description": "Figure {figure_no}: Detailed description of the figure with labels and their connections./n...(More figure breif description according to the figure numbers)"
    }}
 
 Example Output:
 {{
-  "brief_description": "Figure {figure_no}: This diagram depicts a mechanical device.",
-  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation."
+  "brief_description": "Figure {figure_no}: This diagram depicts a mechanical device./n...(More figure breif description according to the figure numbers)",
+  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation./n...(More figure breif description according to the figure numbers)"
 }}
 """
     else:
