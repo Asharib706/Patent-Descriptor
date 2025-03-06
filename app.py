@@ -1,16 +1,3 @@
-import os
-from flask import Flask, request, jsonify
-import google.generativeai as genai
-import pathlib
-from dotenv import load_dotenv
-load_dotenv()
-
-# Set up API key
-genai.configure(api_key=os.environ["API_KEY"])
-
-app = Flask(__name__)
-
-# Function to process the PDF and extract diagram descriptions
 def process_pdf(filepath, figure_no=None):
     # Read the PDF file
     if not filepath.exists():
@@ -69,41 +56,24 @@ Example Output:
         cleaned_result = result[start_index:end_index]
 
         response_json = json.loads(cleaned_result)
-        return response_json
+
+        # Ensure the output has only two keys: brief_description and detailed_description
+        if isinstance(response_json, dict):
+            brief_descriptions = []
+            detailed_descriptions = []
+
+            for key, value in response_json.items():
+                if isinstance(value, dict):
+                    brief_descriptions.append(value.get("brief_description", ""))
+                    detailed_descriptions.append(value.get("detailed_description", ""))
+
+            # Combine descriptions into single strings separated by newlines
+            final_output = {
+                "brief_description": "\n".join(brief_descriptions),
+                "detailed_description": "\n".join(detailed_descriptions)
+            }
+            return final_output
+        else:
+            raise ValueError("The model's response is not in the expected dictionary format.")
     except json.JSONDecodeError:
         raise ValueError("The model's response could not be parsed as JSON.")
-
-@app.route('/extract', methods=['POST'])
-def extract_diagrams():
-    # Check if the post request has the file part
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-
-    file = request.files['file']
-    figure_no = request.form.get('figure_no')
-
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-
-    # Save the file temporarily
-    filepath = pathlib.Path(file.filename)
-    file.save(filepath)
-
-    try:
-        
-        # Process the PDF and get the response
-        result = process_pdf(filepath, figure_no)
-        return jsonify(result)  # Return the JSON directly
-    except FileNotFoundError as e:
-        return jsonify({"error": str(e)}), 404
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 500
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        # Clean up the temporary file
-        if filepath.exists():
-            filepath.unlink()
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
