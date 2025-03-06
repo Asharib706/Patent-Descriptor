@@ -4,6 +4,7 @@ import google.generativeai as genai
 import pathlib
 from dotenv import load_dotenv
 load_dotenv()
+
 # Set up API key
 genai.configure(api_key=os.environ["API_KEY"])
 
@@ -18,48 +19,59 @@ def process_pdf(filepath, figure_no=None):
     # Define the prompt for extracting diagram descriptions
     if figure_no:
         prompt = f"""The provided PDF contains diagrams and text. Your task is to:
-1. Identify the diagram(s) corresponding to figure number(s) {figure_no}.
+1. First, identify the diagram(s) corresponding to figure number(s) {figure_no} and provide a brief description of each diagram to confirm identification.
 2. For each identified diagram:
    - Extract all labels (e.g., 1, 2, 3, 4) and their descriptions.
-   - Provide a detailed description of the entire figure, explaining what it represents.
-3. Format the output for each diagram as a separate paragraph, ensuring that all label numbers are explicitly mentioned in brackets and described.
+   - Provide a detailed description of the entire figure, explaining what it represents in a paragraph form. Ensure that all label numbers are explicitly mentioned in brackets (e.g., (10), (12), (14)) and describe how the labeled components are connected to each other.
+3. Format the output as a JSON object with the following structure:
+   {{
+     "brief_description": "Figure {figure_no}: Brief description of the figure",
+     "detailed_description": "Figure {figure_no}: Detailed description of the figure with labels and their connections."
+   }}
 
 Example Output:
-Figure {figure_no}: This diagram depicts a mechanical device. It consists of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion, the shaft (12) transmits power, and the casing (14) provides protection and support to the internal mechanisms.
-
-Please ensure that:
-- All label numbers are explicitly mentioned in brackets (e.g., (10), (12), (14)).
-- Each label is described clearly in the context of the figure.
-- The description of the entire figure is clear and concise.
-- Each figure's description is presented in a separate paragraph.
+{{
+  "brief_description": "Figure {figure_no}: This diagram depicts a mechanical device.",
+  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation."
+}}
 """
     else:
         prompt = """The provided PDF contains diagrams and text. Your task is to:
-1. Identify all diagrams in the PDF.
+1. First, identify all diagrams in the PDF and provide a brief description of each diagram to confirm identification.
 2. For each diagram:
    - Extract all labels (e.g., 1, 2, 3, 4) and their descriptions.
-   - Provide a detailed description of the entire figure, explaining what it represents.
-3. Format the output for each diagram as a separate paragraph, ensuring that all label numbers are explicitly mentioned in brackets and described.
+   - Provide a detailed description of the entire figure, explaining what it represents in a paragraph form. Ensure that all label numbers are explicitly mentioned in brackets (e.g., (10), (12), (14)) and describe how the labeled components are connected to each other.
+3. Format the output as a JSON object with the following structure:
+   {{
+     "brief_description": "Figure 1: Brief description of the figure\\nFigure 2: Brief description of the figure\\n...",
+     "detailed_description": "Figure 1: Detailed description of the figure with labels and their connections.\\nFigure 2: Detailed description of the figure with labels and their connections.\\n..."
+   }}
 
 Example Output:
-Figure 1: This diagram depicts a mechanical device. It consists of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion, the shaft (12) transmits power, and the casing (14) provides protection and support to the internal mechanisms.
-
-Figure 2: This diagram illustrates a biomedical apparatus. It includes a sensor (20), a monitoring unit (22), and a display screen (24). The sensor (20) detects physiological signals, the monitoring unit (22) processes the data, and the display screen (24) shows the results in real-time.
-
-Please ensure that:
-- All label numbers are explicitly mentioned in brackets (e.g., (10), (12), (14)).
-- Each label is described clearly in the context of the figure.
-- The description of the entire figure is clear and concise.
-- Each figure's description is presented in a separate paragraph.
+{{
+  "brief_description": "Figure 1: This diagram depicts a mechanical device.\\nFigure 2: This diagram illustrates a biomedical apparatus.",
+  "detailed_description": "Figure 1: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation.\\nFigure 2: The diagram illustrates a biomedical apparatus with a sensor (20) that detects physiological signals, a monitoring unit (22) that processes the data, and a display screen (24) that shows the results in real-time. The sensor (20) sends data to the monitoring unit (22), which analyzes and displays the results on the screen (24)."
+}}
 """
 
     # Generate content using the Gemini model
     file = genai.upload_file(filepath)
-    model=genai.GenerativeModel("gemini-2.0-flash")
-            # Generate content using the prompt
+    model = genai.GenerativeModel("gemini-2.0-flash")
+    # Generate content using the prompt
     response = model.generate_content([file, prompt])
 
-    return response.text
+    # Parse the response text as JSON
+    try:
+        import json
+        result = response.text
+        start_index = result.find('{')
+        end_index = result.rfind('}') + 1
+        cleaned_result = result[start_index:end_index]
+
+        response_json = json.loads(cleaned_result)
+        return response_json
+    except json.JSONDecodeError:
+        raise ValueError("The model's response could not be parsed as JSON.")
 
 @app.route('/extract', methods=['POST'])
 def extract_diagrams():
@@ -78,11 +90,14 @@ def extract_diagrams():
     file.save(filepath)
 
     try:
+        
         # Process the PDF and get the response
         result = process_pdf(filepath, figure_no)
-        return jsonify({"result": result})
+        return jsonify(result)  # Return the JSON directly
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
