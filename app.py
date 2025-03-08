@@ -10,15 +10,37 @@ genai.configure(api_key=os.environ["API_KEY"])
 
 app = Flask(__name__)
 
+# Function to improve grammar of the user description
+
 # Function to process the PDF and extract diagram descriptions
-def process_pdf(filepath, figure_no=None):
+def process_pdf(filepath, figure_no=None, user_description=None):
     # Read the PDF file
     if not filepath.exists():
         raise FileNotFoundError(f"The file {filepath} does not exist.")
 
-    # Define the prompt for extracting diagram descriptions
-    if figure_no:
-        prompt = f"""The provided PDF contains diagrams and text. Your task is to:
+    # If user_description is provided, improve its grammar and use it as the brief description
+    if user_description:
+
+        # Define the prompt for generating detailed description based on the user's input
+        prompt = f"""The provided PDF contains diagrams and text. Based on the user's brief description: {user_description}, your task is to:
+1. Identify the diagram(s) corresponding to figure number(s) {figure_no}.
+2. Provide a detailed description of the figure, explaining what it represents in a paragraph form. Ensure that all label numbers are explicitly mentioned in brackets (e.g., (10), (12), (14)) and describe how the labeled components are connected to each other.
+3. Format the output as a JSON object with the following structure:
+   {{
+     "brief_description": "Figure {figure_no}: It is same as the user's breif description just correct the grammatical mistakes from that and paraphrase into better words",
+     "detailed_description": "Figure {figure_no}: Detailed description of the figure with labels and their connections."
+   }}
+
+Example Output:
+{{
+  "brief_description": "Figure {figure_no}: {user_description}",
+  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation."
+}}
+"""
+    else:
+        # If no user_description is provided, use the original prompt
+        if figure_no:
+            prompt = f"""The provided PDF contains diagrams and text. Your task is to:
 1. First, identify the diagram(s) corresponding to figure number(s) {figure_no} and provide a brief description of each diagram to confirm identification.
 2. For each identified diagram:
    - Extract all labels (e.g., 1, 2, 3, 4) and their descriptions.
@@ -35,8 +57,8 @@ Example Output:
   "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation./n...(More figure breif description according to the figure numbers)"
 }}
 """
-    else:
-        prompt = """The provided PDF contains diagrams and text. Your task is to:
+        else:
+            prompt = """The provided PDF contains diagrams and text. Your task is to:
 1. First, identify all diagrams in the PDF and provide a brief description of each diagram to confirm identification.
 2. For each diagram:
    - Extract all labels (e.g., 1, 2, 3, 4) and their descriptions.
@@ -104,6 +126,7 @@ def extract_diagrams():
 
     file = request.files['file']
     figure_no = request.form.get('figure_no')
+    user_description = request.form.get('user_description')
 
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
@@ -113,9 +136,8 @@ def extract_diagrams():
     file.save(filepath)
 
     try:
-        
         # Process the PDF and get the response
-        result = process_pdf(filepath, figure_no)
+        result = process_pdf(filepath, figure_no, user_description)
         return jsonify(result)  # Return the JSON directly
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
@@ -130,4 +152,3 @@ def extract_diagrams():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
-
