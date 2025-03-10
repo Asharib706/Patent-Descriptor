@@ -10,10 +10,8 @@ genai.configure(api_key=os.environ["API_KEY"])
 
 app = Flask(__name__)
 
-# Function to improve grammar of the user description
-
 # Function to process the PDF and extract diagram descriptions
-def process_pdf(filepath, figure_no=None, user_description=None):
+def process_pdf(filepath, figure_no=None, user_description=None, title_of_invention=None, uniqueness=None):
     # Read the PDF file
     if not filepath.exists():
         raise FileNotFoundError(f"The file {filepath} does not exist.")
@@ -25,16 +23,17 @@ def process_pdf(filepath, figure_no=None, user_description=None):
         prompt = f"""The provided PDF contains diagrams and text. Based on the user's brief description: {user_description}, your task is to:
 1. Identify the diagram(s) corresponding to figure number(s) {figure_no}.
 2. Provide a detailed description of the figure, explaining what it represents in a paragraph form. Ensure that all label numbers are explicitly mentioned in brackets (e.g., (10), (12), (14)) and describe how the labeled components are connected to each other.
-3. Format the output as a JSON object with the following structure:
+3. Incorporate the Title of Invention: {title_of_invention} and Uniqueness: {uniqueness} into the descriptions to provide a more comprehensive understanding.
+4. Format the output as a JSON object with the following structure:
    {{
-     "brief_description": "Figure {figure_no}: It is same as the user's breif description just correct the grammatical mistakes from that and paraphrase into better words",
+     "brief_description": "Figure {figure_no}:  Title of Invention: {title_of_invention}. Uniqueness: {uniqueness} It is same as the user's brief description just correct the grammatical mistakes from that and paraphrase into better words..",
      "detailed_description": "Figure {figure_no}: Detailed description of the figure with labels and their connections."
    }}
 
 Example Output:
 {{
-  "brief_description": "Figure {figure_no}: {user_description}",
-  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation."
+  "brief_description": "Figure {figure_no}: Title of Invention: {title_of_invention}. Uniqueness: {uniqueness}. {user_description}. ",
+  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation. Title of Invention: {title_of_invention}. Uniqueness: {uniqueness}."
 }}
 """
     else:
@@ -47,14 +46,14 @@ Example Output:
    - Provide a detailed description of the entire figure, explaining what it represents in a paragraph form. Ensure that all label numbers are explicitly mentioned in brackets (e.g., (10), (12), (14)) and describe how the labeled components are connected to each other.
 3. Format the output as a JSON object with the following structure:
    {{
-     "brief_description": "Figure {figure_no}: Brief description of the figure/n...(More figure breif description according to the figure numbers)",
-     "detailed_description": "Figure {figure_no}: Detailed description of the figure with labels and their connections./n...(More figure breif description according to the figure numbers)"
+     "brief_description": "Figure {figure_no}: Brief description of the figure/n...(More figure brief description according to the figure numbers)",
+     "detailed_description": "Figure {figure_no}: Detailed description of the figure with labels and their connections./n...(More figure brief description according to the figure numbers)"
    }}
 
 Example Output:
 {{
-  "brief_description": "Figure {figure_no}: This diagram depicts a mechanical device./n...(More figure breif description according to the figure numbers)",
-  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation./n...(More figure breif description according to the figure numbers)"
+  "brief_description": "Figure {figure_no}: This diagram depicts a mechanical device./n...(More figure brief description according to the figure numbers)",
+  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation./n...(More figure brief description according to the figure numbers)"
 }}
 """
         else:
@@ -127,6 +126,8 @@ def extract_diagrams():
     file = request.files['file']
     figure_no = request.form.get('figure_no')
     user_description = request.form.get('user_description')
+    title_of_invention = request.form.get('title_of_invention')
+    uniqueness = request.form.get('uniqueness')
 
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
@@ -137,7 +138,7 @@ def extract_diagrams():
 
     try:
         # Process the PDF and get the response
-        result = process_pdf(filepath, figure_no, user_description)
+        result = process_pdf(filepath, figure_no, user_description, title_of_invention, uniqueness)
         return jsonify(result)  # Return the JSON directly
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
