@@ -33,7 +33,7 @@ def process_pdf(filepath, figure_no=None, user_description=None, title_of_invent
 Example Output:
 {{
   "brief_description": "Figure {figure_no}: Title of Invention: {title_of_invention}. Uniqueness: {uniqueness}. {user_description}. ",
-  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation. Title of Invention: {title_of_invention}. Uniqueness: {uniqueness}."
+  "detailed_description": "Figure {figure_no}: The diagram shows a mechanical device consisting of a gear (10), a shaft (12), and a casing (14). The gear (10) transfers rotational motion to the shaft (12), which transmits power. The casing (14) provides protection and support to the internal mechanisms, ensuring smooth operation."
 }}
 """
     else:
