@@ -77,7 +77,7 @@ Example Output:
 
     # Generate content using the Gemini model
     file = genai.upload_file(filepath)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = genai.GenerativeModel("gemini-3.5-flash-lite")
     # Generate content using the prompt
     response = model.generate_content([file, prompt])
 
